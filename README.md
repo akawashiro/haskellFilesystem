@@ -31,3 +31,4 @@ mkFileDirとして実装済み
 mkFileDirとして実装済み
 
 ###rename
+rename ファイル名orディレクトリ名(絶対パスで) 新しい名前
