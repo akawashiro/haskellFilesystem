@@ -7,7 +7,7 @@ data FileDir =
 
 f = File "aa" "bb"
 f1 = File "xx" "yy"
-d = Dir  "cc" [f]
+d = Dir  "cc" [f,Dir "f" []]
 
 
 type Path = [String]
@@ -16,18 +16,18 @@ stringToPath :: String -> Path
 stringToPath s = splitOn "/" s
 
 -- Make a file or directory in the directroy assingned by the path
-touch :: Path -> FileDir -> State FileDir Bool
-touch p f = do
+mkFileDir :: Path -> FileDir -> State FileDir Bool
+mkFileDir p f = do
     fd <- get
     if isDirExist p fd 
         then do
-            put $ touch' p f fd
+            put $ mkFileDir' p f fd
             return True
         else return False
     
-touch' (s:[]) f (Dir n fds) = if s==n then Dir n (f : fds) else Dir n fds
-touch' (s:ss) f (Dir n fds) = if s==n then Dir n (map (touch' ss f) fds) else Dir n fds
-touch' _ _ fd = fd
+mkFileDir' (s:[]) f (Dir n fds) = if s==n then Dir n (f : fds) else Dir n fds
+mkFileDir' (s:ss) f (Dir n fds) = if s==n then Dir n (map (mkFileDir' ss f) fds) else Dir n fds
+mkFileDir' _ _ fd = fd
 
 isDirExist [] _ = True
 isDirExist (s:ss) (Dir n fds) = if s==n then any (isDirExist ss) fds else False
@@ -47,7 +47,52 @@ isFileExist [s] (File n _) = s==n
 isFileExist (s:ss) (Dir n fds) = if s==n then any (isFileExist ss) fds else False
 isFileExist _ _ = False
 
-checkTouch = runState (touch ["cc"] f1) d
+-- rm and rm -r command
+-- This command cannot deal with a filesystem which contain only one File at its root
+rm :: Path -> State FileDir Bool
+rm p = do
+    fd <- get
+    if isDirExist p fd || isFileExist p fd
+    then do
+        put $ rm' p fd
+        return True
+    else
+        return False
+
+rm' :: Path -> FileDir -> FileDir
+rm' (s:t:[]) (Dir n fds) = if s==n 
+                           then Dir n (filter (\x -> not (t==getFileDirName x)) fds)
+                           else Dir n fds
+rm' (s:ss) (Dir n fds) = if s==n then (Dir n (map (rm' ss) fds))
+                                 else (Dir n fds)
+rm' _ fd = fd
+
+
+getFileDirName (Dir n _) = n
+getFileDirName (File n _) = n
+
+-- mv command
+mv :: Path -> Path -> State FileDir Bool
+mv p1 p2 = do
+    fd <- get
+    if (isDirExist p1 fd || isFileExist p1 fd) && isDirExist (pathToDirName p2) fd
+    then do
+        put $ mv' p1 p2 fd
+        return True
+    else return False
+
+mv' :: Path -> Path -> FileDir -> FileDir
+mv' p1 p2 fd = mkFileDir' p2 (getFileDir p1 fd) (rm' p1 fd)
+
+-- Caution! This function must be use after checked by isDirExist or isFileExist.
+getFileDir :: Path -> FileDir -> FileDir
+getFileDir (s:t:[]) (Dir n fds) = head (filter (\x -> (t==getFileDirName x)) fds)
+getFileDir (s:t:us) (Dir n fds) = getFileDir (t:us) $ head (filter (\x -> (t==getFileDirName x)) fds)
+
+pathToDirName [s] = []
+pathToDirName (s:ss) = s:pathToDirName ss
+
+checkTouch = runState (mkFileDir ["cc"] f1) d
 
 
 main = undefined
