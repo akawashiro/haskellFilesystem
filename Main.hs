@@ -9,6 +9,7 @@ f = File "aa" "bb"
 f1 = File "xx" "yy"
 d = Dir  "cc" [f,Dir "f" []]
 
+main = undefined
 
 type Path = [String]
 
@@ -92,7 +93,32 @@ getFileDir (s:t:us) (Dir n fds) = getFileDir (t:us) $ head (filter (\x -> (t==ge
 pathToDirName [s] = []
 pathToDirName (s:ss) = s:pathToDirName ss
 
-checkTouch = runState (mkFileDir ["cc"] f1) d
+-- cp command
+cp :: Path -> Path -> State FileDir Bool
+cp p1 p2 = do
+    fd <- get
+    if (isDirExist p1 fd || isFileExist p1 fd) && isDirExist (pathToDirName p2) fd
+    then do
+        put $ cp' p1 p2 fd
+        return True
+    else return False
 
+cp' :: Path -> Path -> FileDir -> FileDir
+cp' p1 p2 fd = mkFileDir' p2 (getFileDir p1 fd) fd
 
-main = undefined
+-- rename command
+rename :: Path -> String -> State FileDir Bool
+rename p s = do
+    fd <- get
+    if isDirExist p fd || isFileExist p fd
+    then do
+        put $ rename' p s fd
+        return True
+    else 
+        return False
+
+rename' [t] s (Dir n fds) = if t==n then (Dir s fds) else (Dir n fds)
+rename' [t] s (File n c) = if t==n then (File s c) else (File n c)
+rename' (t:ts) s (Dir n fds) = if t==n then Dir n (map (rename' ts s) fds) else Dir n fds
+rename' _ _ fd = fd
+
