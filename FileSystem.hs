@@ -8,10 +8,21 @@ data FileDir =
     | Dir {dirName::String,dirContent::[FileDir]} deriving Show
 
 f = File "aa" "bb"
+root = Dir "" [File "hello" "HELLO",Dir "usr" [Dir "local" []],Dir "var" [File "http" "world"],Dir "proc" [],Dir "etc" []]
 f1 = File "xx" "yy"
 d = Dir  "cc" [f,Dir "f" []]
 
 type Path = [String]
+
+-- tree command on root
+tree :: State FileDir String
+tree = do
+    fd <- get
+    return (tree' "" fd)
+
+tree' :: String -> FileDir -> String
+tree' parentPath (File n c) = parentPath++n++"\n"
+tree' parentPath (Dir n fds) = concat (map (tree' (parentPath++n++"/")) fds)++parentPath++n++"/"++"\n"
 
 -- Make a file or directory in the directroy assingned by the path
 mkFileDir :: Path -> FileDir -> State FileDir Bool
@@ -31,11 +42,19 @@ isDirExist [] _ = True
 isDirExist (s:ss) (Dir n fds) = if s==n then any (isDirExist ss) fds else False
 isDirExist _ _ = False
 
+-- Make a file in specified path
+mkFile :: Path -> String -> String -> State FileDir Bool
+mkFile p n c = mkFileDir p (File n c)
+
+-- Make a directory in specified path
+mkDir :: Path -> String -> State FileDir Bool
+mkDir p n = mkFileDir p (Dir n [])
+
 -- cat a file assingned by the path
 cat :: Path -> State FileDir String
 cat p = do
     fd <- get
-    if isFileExist p fd then return (cat' p fd) else return ""
+    if isFileExist p fd then return (cat' p fd) else return "Cannot find such file."
 
 cat' [s] (File n c) = c
 cat' (s:ss) (Dir n fds) = if s==n then concat (map (cat' ss) fds) else ""
