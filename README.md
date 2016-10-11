@@ -4,7 +4,7 @@
 haskellで作られた超簡易ファイルシステム。ファイルの作成、削除、リネームができる。
 
 ##動作の様子
-(https://github.com/akawashiro/haskell-filesystem/blob/master/haskell-filesystem-intro.gif)
+![intro](https://github.com/akawashiro/haskell-filesystem/blob/master/haskell-filesystem-intro.gif)
 
 ##使えるコマンド
 注意:このプログラムにはカレントディレクトリの概念が無いので常に絶対パスで指定する必要がある。
